@@ -1,0 +1,9 @@
+- Scan QR
+- Make API call with qr_id
+- Wait for API res
+- If res = "Avaialble", show "Blue Tick" gif with the sub-title "Avaialble" 
+    - Activate "Sold" Button 
+- If res = "Sold", show "Green Tick" gif with the sub-title "Sold" | It means this t-shirt has been sold and ready to dispatch
+    - Activate "Returned" Button
+- If res = "Returned", show "Red Tick" gif with the sub-title "Returned"
+    - Activate "Available" Button

@@ -1,125 +1,203 @@
+import 'dart:developer';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:qr_code_scanner/qr_code_scanner.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+void main() => runApp(const MaterialApp(home: QRViewExample()));
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  // This widget is the root of your application.
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a blue toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
-    );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class QRViewExample extends StatefulWidget {
+  const QRViewExample({Key? key}) : super(key: key);
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<StatefulWidget> createState() => _QRViewExampleState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _QRViewExampleState extends State<QRViewExample> {
+  Barcode? result;
+  QRViewController? controller;
+  final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  String qrStatus = "Available";
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  // In order to get hot reload to work we need to pause the camera if the platform
+  // is android, or resume the camera if the platform is iOS.
+  @override
+  void reassemble() {
+    super.reassemble();
+    if (Platform.isAndroid) {
+      controller!.pauseCamera();
+    }
+    controller!.resumeCamera();
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
+    return SafeArea(
+      child: Scaffold(
+        body: Column(
           children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+            Expanded(flex: 1, child: _buildQrView(context)),
+            Container(
+              padding: EdgeInsets.symmetric(vertical: 60),
+              child: Center(
+                child: Expanded(
+                    flex: 1,
+                    child: result != null
+                        ? Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                qrStatus,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 40),
+                              ),
+                              Text(
+                                _getStatusSubtitle(),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w400, fontSize: 16),
+                              ),
+                              const SizedBox(
+                                height: 30,
+                              ),
+                              Container(
+                                alignment: Alignment.bottomCenter,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 30),
+                                child: Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () {},
+                                    style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(15.0),
+                                      child: Text(
+                                        _getButtonText(),
+                                        style: const TextStyle(
+                                            color: Colors.white, fontSize: 18),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Container(
+                            child: Text("Begin Scanning"),
+                          )),
+              ),
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      await controller!.resumeCamera();
+                    },
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue[900]),
+                    child: const Padding(
+                      padding: EdgeInsets.all(20.0),
+                      child: Text(
+                        "SCAN NEXT",
+                        style: TextStyle(color: Colors.white, fontSize: 18),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
+  }
+
+  Widget _buildQrView(BuildContext context) {
+    // For this example we check how width or tall the device is and change the scanArea and overlay accordingly.
+    var scanArea = (MediaQuery.of(context).size.width < 400 ||
+            MediaQuery.of(context).size.height < 400)
+        ? 220.0
+        : 300.0;
+    // To ensure the Scanner view is properly sizes after rotation
+    // we need to listen for Flutter SizeChanged notification and update controller
+    return QRView(
+      key: qrKey,
+      onQRViewCreated: _onQRViewCreated,
+      overlay: QrScannerOverlayShape(
+          borderColor: Colors.white,
+          borderRadius: 12,
+          borderLength: 30,
+          borderWidth: 5,
+          cutOutSize: scanArea),
+      onPermissionSet: (ctrl, p) => _onPermissionSet(context, ctrl, p),
+    );
+  }
+
+  void _onQRViewCreated(QRViewController controller) {
+    setState(() {
+      this.controller = controller;
+    });
+    controller.scannedDataStream.listen((scanData) async {
+      setState(() {
+        result = scanData;
+        qrStatus = _getQrStatus(result!.code!);
+      });
+      await controller.pauseCamera();
+    });
+  }
+
+  void _onPermissionSet(BuildContext context, QRViewController ctrl, bool p) {
+    log('${DateTime.now().toIso8601String()}_onPermissionSet $p');
+    if (!p) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('no Permission')),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    controller?.dispose();
+    super.dispose();
+  }
+
+  String _getButtonText() {
+    switch (qrStatus) {
+      case 'Available':
+        return 'Mark as SOLD';
+      case 'Sold':
+        return 'Mark as RETURNED';
+      case 'Returned':
+        return 'Mark as AVAILABLE';
+      default:
+        return '';
+    }
+  }
+
+  String _getStatusSubtitle() {
+    switch (qrStatus) {
+      case 'Available':
+        return 'In Inventory';
+      case 'Sold':
+        return 'In Order';
+      case 'Returned':
+        return 'In Cancellation';
+      default:
+        return '';
+    }
+  }
+
+  String _getQrStatus(String result) {
+    switch (result) {
+      case 'ABC123':
+        return 'Available';
+      case 'ABC456':
+        return 'Sold';
+      case 'ABC789':
+        return 'Returned';
+      default:
+        return '';
+    }
   }
 }
